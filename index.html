@@ -221,14 +221,89 @@ input:not([type="checkbox"]), select {
     border: 1px solid rgba(10, 132, 255, 0.3) !important; /* 加一點纖細的邊框增強質感 */
 }
 
+.range-btn {
+    padding: 6px 14px;
+    font-size: 12px;
+    border-radius: 20px;
+    border: 1px solid #333;
+    background: transparent;
+    color: var(--subtext);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.range-btn.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+}
+
+/* 預設圖表容器基礎高度 */
+.chart-container {
+    position: relative;
+    width: 100%;
+    height: 320px;
+}
+
+/* 僅針對「第二頁 (page-history)」在寬螢幕/橫放時解除寬度限制 */
+@media (min-width: 768px), (orientation: landscape) {
+    /* 當切換到第二頁時，打破外層容器的 480px 限制 */
+    .container:has(#page-history[style*="display: block"]),
+    body:has(#page-history[style*="display: block"]) .container {
+        max-width: 900px !important;
+        width: 100% !important;
+    }
+
+    /* 確保第二頁卡片佔滿寬度 */
+    #page-history, 
+    #page-history .chart-box {
+        max-width: 100% !important;
+        width: 100% !important;
+    }
+
+    /* 圖表高度適度拉高 */
+    .chart-container {
+        height: 360px !important;
+    }
+}
+
+/* 圖表下方分類切換按鈕樣式 */
+.cat-filter-btn {
+    padding: 5px 12px;
+    font-size: 12px;
+    border-radius: 16px;
+    border: 1px solid #3a3a3c;
+    background: #2c2c2e;
+    color: #8e8e93;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+/* 啟用/開啟狀態：亮亮色系 */
+.cat-filter-btn.active {
+    background: rgba(10, 132, 255, 0.2);
+    color: #64d2ff;
+    border-color: #0a84ff;
+    font-weight: 500;
+}
+
+*/ ===CSS結尾=== /*
+
     </style>
 </head>
 <body>
 
 <div class="container">
+
+<!-- 分頁切換按鈕 (Segmented Control) -->
+<div style="display: flex; background: #1c1c1e; padding: 4px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #333;">
+    <button id="tab-overview" onclick="switchPage('overview')" style="flex: 1; padding: 10px; border: none; border-radius: 8px; background: var(--accent); color: white; font-weight: 600; cursor: pointer;">資產總覽</button>
+    <button id="tab-history" onclick="switchPage('history')" style="flex: 1; padding: 10px; border: none; border-radius: 8px; background: transparent; color: var(--subtext); font-weight: 600; cursor: pointer;">資產趨勢</button>
+</div>
+
     <div id="status" style="font-size:0.75rem; text-align:center; color:var(--subtext); margin-bottom:10px;">準備就緒</div>
     
-    <div class="chart-box">
+    <div class="chart-box"id="page-overview">
         <button class="eye-btn" id="hideBtn" style="left: 15px;" onclick="toggleHide()">🙈</button>
 <button class="sort-btn" onclick="toggleSortMode()">⇅ 排序</button>
 
@@ -274,10 +349,389 @@ input:not([type="checkbox"]), select {
 </div>
         
         <button class="btn-primary" onclick="handleNewItem()">確認加入並同步</button>
+
+    </div>
+<!-- 🟢第二頁（資產歷史頁面） -->
+    <div id="page-history" style="display: none;">
+        <div class="chart-box">
+<div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
+            <h3 style="margin-top: 0; font-size: 1.1rem; text-align: left; color: var(--text);">資產趨勢</h3>
+            
+            <!-- 時間範圍切換按鈕與自訂日期區塊 -->
+            <div class="range-selector" style="display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; align-items: center; justify-content: flex-end;">
+                <button class="range-btn active" onclick="setHistoryRange(7, this)" style="padding: 6px 14px; font-size: 12px; border-radius: 10px; border: 1px solid var(--accent); background: var(--accent); color: white; cursor: pointer;">7天</button>
+                <button class="range-btn" onclick="setHistoryRange(15, this)" style="padding: 6px 14px; font-size: 12px; border-radius: 10px; border: 1px solid #333; background: transparent; color: var(--subtext); cursor: pointer;">15天</button>
+                <button class="range-btn" onclick="setHistoryRange(31, this)" style="padding: 6px 14px; font-size: 12px; border-radius: 10px; border: 1px solid #333; background: transparent; color: var(--subtext); cursor: pointer;">31天</button>
+                <button class="range-btn" onclick="setHistoryRange('custom', this)" style="padding: 6px 14px; font-size: 12px; border-radius: 10px; border: 1px solid #333; background: transparent; color: var(--subtext); cursor: pointer;">自訂</button>
+    </div>
+                <!-- 自訂日期區塊 (預設隱藏) -->
+                <div id="customDateGroup" style="display: none; gap: 6px; align-items: center; margin-top: 6px; width: 100%;">
+                    <input type="date" id="historyStartDate" onchange="renderHistoryChart()" style="padding: 2px 4px !important; border-radius: 8px; background: #2c2c2e; color: #fff; border: 1px solid #38383a; font-size: 12px;">
+                    <span style="color: var(--subtext); font-size: 12px;">至</span>
+                    <input type="date" id="historyEndDate" onchange="renderHistoryChart()" style="padding: 2px 4px !important; border-radius: 8px; background: #2c2c2e; color: #fff; border: 1px solid #38383a; font-size: 12px;">
+                </div>
+            </div>
+
+            <!-- 響應式圖表容器 -->
+        <div class="chart-container">
+            <canvas id="assetHistoryChart"></canvas>
+        </div>
+<div id="categoryFilterGroup" style="display: flex; gap: 8px; margin-top: 15px; flex-wrap: wrap; justify-content: flex-start;"></div>
+    </div>
     </div>
 </div>
 
 <script>
+// 1. 全域變數
+let historyChart = null;
+let rawHistoryData = []; // 儲存後端抓回來的原始歷史數據
+let currentRange = 7;    // 預設顯示天數 (7, 15, 31 或 'custom')
+let selectedHistoryCats = null; // 紀錄歷史頁面當前勾選開啟的分類 (null 代表預設全選)
+
+// 🟢 長按相關變數與前次狀態備份
+let pressTimer = null;
+let isLongPress = false;
+let previousHistoryCats = null;
+
+// 🟢 專注模式開關變數
+let isFocusMode = false;
+
+// ----------------------------------------------------
+// 🟢 長按事件處理邏輯 (支援專注模式下多選)
+// ----------------------------------------------------
+
+// 開始長按計時
+function startPressTimer(catName) {
+    isLongPress = false;
+    pressTimer = setTimeout(() => {
+        isLongPress = true;
+        onCategoryLongPress(catName);
+    }, 500); // 長按 0.5 秒觸發
+}
+
+// 清除計時器 (手指抬起或離開時)
+function clearPressTimer() {
+    if (pressTimer) {
+        clearTimeout(pressTimer);
+        pressTimer = null;
+    }
+}
+
+// 點擊事件代理 (只有不是長按時才執行短按 logic)
+function handleCatClick(catName) {
+    if (isLongPress) {
+        isLongPress = false;
+        return; // 若已觸發長按，則不觸發短按
+    }
+    toggleHistoryCategory(catName);
+}
+
+// 長按觸發邏輯：無論是否在專注模式，長按皆可追加/移除該項目
+function onCategoryLongPress(catName) {
+    if (!selectedHistoryCats) return;
+
+    if (navigator.vibrate) navigator.vibrate(50); // 長按成功給予震動回饋
+
+    if (selectedHistoryCats.includes(catName)) {
+        // 若已存在且數量 > 1，則移除；若只剩 1 個則不移除
+        if (selectedHistoryCats.length > 1) {
+            selectedHistoryCats = selectedHistoryCats.filter(c => c !== catName);
+        }
+    } else {
+        // 未存在則追加
+        selectedHistoryCats.push(catName);
+    }
+
+    localStorage.setItem('percento_selected_cats', JSON.stringify(selectedHistoryCats));
+    if (typeof saveAndRefresh === 'function') saveAndRefresh();
+    renderHistoryChart();
+}
+
+// 2. 切換時間範圍按鈕邏輯
+function setHistoryRange(range, btn) {
+    currentRange = range;
+    
+    // 更新按鈕 active 樣式
+    document.querySelectorAll('.range-btn').forEach(b => {
+        b.style.background = 'transparent';
+        b.style.color = 'var(--subtext)';
+        b.style.border = '1px solid #333';
+    });
+    btn.style.background = 'var(--accent)';
+    btn.style.color = 'white';
+    btn.style.border = '1px solid var(--accent)';
+
+    // 切換自訂日期輸入框顯示狀態
+    const customGroup = document.getElementById('customDateGroup');
+    if (customGroup) {
+        customGroup.style.display = (range === 'custom') ? 'flex' : 'none';
+    }
+
+    renderHistoryChart();
+}
+
+// 🟢 切換專注模式開關
+function toggleFocusMode() {
+    isFocusMode = !isFocusMode;
+
+    if (navigator.vibrate) navigator.vibrate(30); // 震動回饋
+
+    if (isFocusMode) {
+        // 開啟專注模式時：若目前勾選多個，預設保留第一個；若有前次紀錄則備份
+        if (selectedHistoryCats && selectedHistoryCats.length > 1) {
+            previousHistoryCats = [...selectedHistoryCats];
+            localStorage.setItem('percento_previous_cats', JSON.stringify(previousHistoryCats));
+            selectedHistoryCats = [selectedHistoryCats[0]];
+        }
+    } else {
+        // 關閉專注模式時：嘗試恢復之前的全選/多選狀態
+        if (previousHistoryCats && previousHistoryCats.length > 0) {
+            selectedHistoryCats = [...previousHistoryCats];
+            previousHistoryCats = null;
+            localStorage.removeItem('percento_previous_cats');
+        }
+    }
+
+    localStorage.setItem('percento_selected_cats', JSON.stringify(selectedHistoryCats));
+    if (typeof saveAndRefresh === 'function') saveAndRefresh();
+    renderHistoryChart();
+}
+
+// 切換分類膠囊按鈕開關 (短按)
+function toggleHistoryCategory(catName) {
+    if (!selectedHistoryCats) return;
+
+    // 🟢 專注模式開啟中：短按點擊直接變獨占
+    if (isFocusMode) {
+        if (selectedHistoryCats.length !== 1 || selectedHistoryCats[0] !== catName) {
+            selectedHistoryCats = [catName];
+        }
+    } else {
+        // 一般模式：多選切換
+        if (selectedHistoryCats.includes(catName)) {
+            if (selectedHistoryCats.length > 1) {
+                selectedHistoryCats = selectedHistoryCats.filter(c => c !== catName);
+            }
+        } else {
+            selectedHistoryCats.push(catName);
+        }
+
+        // 手動調整了多選狀態，清除舊備份
+        previousHistoryCats = null;
+        localStorage.removeItem('percento_previous_cats');
+    }
+
+    localStorage.setItem('percento_selected_cats', JSON.stringify(selectedHistoryCats));
+    if (typeof saveAndRefresh === 'function') saveAndRefresh();
+    renderHistoryChart();
+}
+
+// 4. 頁面切換邏輯
+function switchPage(page) {
+    const overviewPage = id => document.getElementById(id);
+    const tabOverview = overviewPage('tab-overview');
+    const tabHistory = overviewPage('tab-history');
+    
+    // 取得主要區塊
+    const pageOverview = overviewPage('page-overview');
+    const pageHistory = overviewPage('page-history');
+    const categoryList = overviewPage('categoryList');
+    const inputArea = document.querySelector('.input-area');
+
+    if (page === 'overview') {
+        pageOverview.style.display = 'block';
+        if (categoryList) categoryList.style.display = 'block';
+        if (inputArea) inputArea.style.display = 'block';
+        pageHistory.style.display = 'none';
+
+        tabOverview.style.background = 'var(--accent)';
+        tabOverview.style.color = 'white';
+        tabHistory.style.background = 'transparent';
+        tabHistory.style.color = 'var(--subtext)';
+    } else {
+        pageOverview.style.display = 'none';
+        if (categoryList) categoryList.style.display = 'none';
+        if (inputArea) inputArea.style.display = 'none';
+        pageHistory.style.display = 'block';
+
+        tabHistory.style.background = 'var(--accent)';
+        tabHistory.style.color = 'white';
+        tabOverview.style.background = 'transparent';
+        tabOverview.style.color = 'var(--subtext)';
+
+        // 切換至歷史頁面時讀取數據並繪製圖表
+        loadAssetHistory();
+    }
+}
+
+// 5. 向 GAS 讀取完整歷史數據
+async function loadAssetHistory() {
+    try {
+        const res = await fetch(`${YOUR_SCRIPT_URL}?action=getHistory&t=${Date.now()}`, {
+            method: 'GET',
+            redirect: 'follow'
+        });
+        
+        if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
+        rawHistoryData = await res.json();
+
+        if (!Array.isArray(rawHistoryData) || rawHistoryData.length === 0) return;
+
+        // 讀取成功後，執行即時繪圖
+        renderHistoryChart();
+    } catch (err) {
+        console.error("載入歷史資產圖表失敗:", err);
+    }
+}
+
+// 6. 根據天數範圍、選取分類與隱藏狀態即時計算並繪製折線圖
+function renderHistoryChart() {
+    if (!rawHistoryData || rawHistoryData.length === 0) return;
+
+    // --- A. 收集歷史資料中出現過的所有合法分類 (排除收入/支出與全域隱藏分類) ---
+    const allCategories = new Set();
+    rawHistoryData.forEach(item => {
+        const details = item.details || {};
+        for (const catName of Object.keys(details)) {
+            if (catName === "收入" || catName === "支出") continue;
+            if (typeof hiddenCategories !== 'undefined' && hiddenCategories.includes(catName)) continue;
+            allCategories.add(catName);
+        }
+    });
+
+    const catList = Array.from(allCategories);
+
+    // 🟢 僅在初次載入時初始化全選，後續點擊時保留使用者的臨時選取狀態
+    if (!selectedHistoryCats) {
+        selectedHistoryCats = [...catList];
+    } else {
+        // 過濾掉可能剛剛在主頁被隱藏的項目，其餘保留使用者的點擊狀態
+        selectedHistoryCats = selectedHistoryCats.filter(cat => catList.includes(cat));
+        if (selectedHistoryCats.length === 0) selectedHistoryCats = [...catList];
+    }
+
+    // --- B. 動態渲染分類開關按鈕 ---
+    const btnContainer = document.getElementById('categoryFilterGroup');
+    if (btnContainer) {
+        // 🟢 專注模式按鈕
+        const focusBtnHtml = `<button class="cat-filter-btn ${isFocusMode ? 'active' : ''}" 
+                                    onclick="toggleFocusMode()"
+                                    style="touch-action: manipulation; font-weight: bold; border-style: dashed;">
+                                    ${isFocusMode ? ' 專注模式' : ' 專注關閉'}
+                                </button>`;
+
+        // 🟢 綁定 pointer 與 click 事件，支援長按多選與短按單選/切換
+        const catBtnsHtml = catList.map(cat => {
+            const isActive = selectedHistoryCats.includes(cat);
+            return `<button class="cat-filter-btn ${isActive ? 'active' : ''}" 
+                        onpointerdown="startPressTimer('${cat}')"
+                        onpointerup="clearPressTimer()"
+                        onpointerleave="clearPressTimer()"
+                        onclick="handleCatClick('${cat}')"
+                        style="touch-action: manipulation;">
+                        ${isActive ? '✓ ' : ''}${cat}
+                    </button>`;
+        }).join('');
+
+        btnContainer.innerHTML = focusBtnHtml + catBtnsHtml;
+    }
+
+    // --- C. 日期過濾與排序邏輯 ---
+    let filteredData = [...rawHistoryData];
+    filteredData.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    if (currentRange === 'custom') {
+        const startVal = document.getElementById('historyStartDate')?.value;
+        const endVal = document.getElementById('historyEndDate')?.value;
+
+        if (startVal) filteredData = filteredData.filter(item => item.date >= startVal);
+        if (endVal) filteredData = filteredData.filter(item => item.date <= endVal);
+    } else if (typeof currentRange === 'number') {
+        filteredData = filteredData.slice(-currentRange);
+    }
+
+    const ctx = document.getElementById('assetHistoryChart').getContext('2d');
+
+    // X 軸日期標籤
+    const labels = filteredData.map(item => {
+        const parts = item.date.split('-');
+        return parts.length === 3 ? `${parts[1]}/${parts[2]}` : item.date;
+    });
+
+    // --- D. 計算當日總資產 (同時過濾 selectedHistoryCats 與 hiddenCategories) ---
+    const dataValues = filteredData.map(item => {
+        let dayTotal = 0;
+        const details = item.details || {};
+
+        for (const [catName, val] of Object.entries(details)) {
+            // 🟢 必須同時滿足：在選取分類中，且「不在」主頁隱藏清單中，才計入數據
+            if (selectedHistoryCats.includes(catName) && !hiddenCategories.includes(catName)) {
+                dayTotal += val;
+            }
+        }
+        return dayTotal;
+    });
+
+    // 銷毀舊圖表實例
+    if (historyChart) historyChart.destroy();
+
+    // 繪製新圖表
+    historyChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: '歷史資產',
+                data: dataValues,
+                borderColor: '#0a84ff',
+                backgroundColor: 'rgba(10, 132, 255, 0.15)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.3,
+                pointRadius: 2,                     // 預設點半徑
+                pointHitRadius: 10,                // 感應範圍
+                pointHoverRadius: 7,               // 懸停放大
+                pointHoverBackgroundColor: '#1c1c1e', // 光環內圈
+                pointHoverBorderColor: '#0a84ff',  // 光環外圈
+                pointHoverBorderWidth: 3           // 光環外圈厚度
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
+            plugins: {
+                legend: { display: false },
+                datalabels: { display: false },
+                tooltip: {
+                    enabled: true,
+                    callbacks: {
+                        label: (ctx) => isHidden ? ' $****' : ` $${Math.round(ctx.parsed.y).toLocaleString()}`
+                    }
+                }
+            },
+            scales: {
+                x: { 
+                    grid: { color: 'rgba(255, 255, 255, 0.05)' }, 
+                    ticks: { color: '#8e8e93', font: { size: 10 } } 
+                },
+                y: { 
+                    grid: { color: 'rgba(255, 255, 255, 0.05)' }, 
+                    ticks: { color: '#8e8e93', font: { size: 10 } //暫時關閉 ,
+                        //stepSize: 5000  🟢 每 5000 為一個刻度單位
+                    } 
+                }
+            }
+        }
+    });
+}
+
+// 紀錄哪些分類被手動隱藏了
+let hiddenCategories = JSON.parse(localStorage.getItem('percento_hidden_cats')) || [];
+
 let currentInputPwd = "";
 let pendingCat = ""; 
 let pwdMode = ""; // 紀錄模式：'unlockEye' 或 'unhideCat'
@@ -304,8 +758,7 @@ defaultCats.forEach(cat => {
 let assets = JSON.parse(localStorage.getItem('percento_dark_data')) || [];
 let isHidden = true;
 let isVerified = false;
-// 紀錄哪些分類被手動隱藏了
-let hiddenCategories = JSON.parse(localStorage.getItem('percento_hidden_cats')) || [];
+
 
     const COLORS = ['#0a84ff','#64d2ff','#ff9f0a','#30d158','#bf5af2','#5e5ce6','#ac8e68','#fff176','#ff453a','#5856d6','#64d2ff','#ff453a'];
     let usdToTwd = 32.5, chart, currentTotal = 0, isSorting = false;
@@ -314,6 +767,9 @@ let hiddenCategories = JSON.parse(localStorage.getItem('percento_hidden_cats')) 
     Chart.register({
         id: 'centerText',
         afterDraw: (chart) => {
+            // 🟢 若不是圓餅圖（例如第二頁折線圖），直接跳出不繪製文字
+            if (chart.config.type !== 'doughnut') return;
+
             const { ctx, chartArea: { top, bottom, left, right, width, height } } = chart;
             ctx.save();
 const text = isHidden ? '$***,***' : '$' + Math.round(currentTotal).toLocaleString(); 
@@ -406,7 +862,8 @@ async function handleNewItem() {
     }
     // 不顯示任何提示文字，直接清空並刷新
     document.getElementById('code').value = '';
-    refresh();
+    saveAndRefresh();
+    renderHistoryChart(); // 🟢 補上這行：即時更新歷史資產曲線圖
     return; 
 }
 
@@ -512,6 +969,7 @@ function executeToggleHide() {
             `<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
     }
     refresh();
+    renderHistoryChart(); // 🟢 補上這行：切換金額遮罩時同步更新趨勢圖提示字
 }
 
 function toggleSortMode() {
@@ -982,50 +1440,74 @@ if (isHidden) {
     // 啟動初始化
 window.onload = async () => {
     document.addEventListener("touchstart", function() {}, true);// 強制啟動手機版的點擊回饋
+
+    // 1. 初始化 DOM 基礎 UI
     isHidden = true;
     isVerified = false;
     const btn = document.getElementById('hideBtn');
-    if(btn) {
-        btn.innerHTML = isHidden ? 
-            `<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>` : 
-            `<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
+    if (btn) {
+        btn.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`;
     }
     initCategorySelect();
-    
-// 從雲端抓取所有數據 (資產 + 隱藏清單)
-    document.getElementById('status').innerText = "☁️ 正在從雲端同步設定...";
-    try {
-        // 這裡 action 改為 getAllData，一次抓回資產和隱藏設定
-        const res = await fetch(`${YOUR_SCRIPT_URL}?action=getAllData`);
-        const cloudData = await res.json();
-        
-        if (cloudData) {
-            // 同步資產
-            if (cloudData.assets && cloudData.assets.length > 0) {
-                assets = cloudData.assets;
-                localStorage.setItem('percento_dark_data', JSON.stringify(assets));
-            }
-            // 同步隱藏分類清單
-            if (cloudData.hiddenCats) {
-                hiddenCategories = cloudData.hiddenCats;
-                localStorage.setItem('percento_hidden_cats', JSON.stringify(hiddenCategories));
-            }
-        }
-    } catch(e) {
-        console.log("雲端同步失敗，使用本地存檔");
-        // 失敗時，至少從本地讀取隱藏清單，避免手機端完全沒設定
-        const localHidden = localStorage.getItem('percento_hidden_cats');
-        if (localHidden) hiddenCategories = JSON.parse(localHidden);
+
+    // 🟢 2. ⚡ 秒開體驗：優先載入本地資料並立即繪製畫面
+    const localHidden = localStorage.getItem('percento_hidden_cats');
+    if (localHidden) hiddenCategories = JSON.parse(localHidden);
+
+    const localSelectedCats = localStorage.getItem('percento_selected_cats');
+    if (localSelectedCats) selectedHistoryCats = JSON.parse(localSelectedCats);
+
+    const savedPrevious = localStorage.getItem('percento_previous_cats');
+    if (savedPrevious) {
+        try { previousHistoryCats = JSON.parse(savedPrevious); } catch(e){}
     }
 
-    // 原有的匯率同步
-    try {
-        const res = await fetch('https://open.er-api.com/v6/latest/USD');
-        const d = await res.json(); usdToTwd = d.rates.TWD;
-    } catch(e) {}
-    
-    document.getElementById('status').innerText = "✅ 同步完成";
+    // 立即渲染本地 UI，不需等待網路請求
     refresh();
+
+    // 🟢 3. 背景非同步同步 (並行發送請求)
+    document.getElementById('status').innerText = "☁️ 正在背景同步...";
+
+    try {
+        // 使用 Promise.all 同時請求 GAS 與匯率 API
+        const [cloudRes, rateRes] = await Promise.allSettled([
+            fetch(`${YOUR_SCRIPT_URL}?action=getAllData`),
+            fetch('https://open.er-api.com/v6/latest/USD')
+        ]);
+
+        // 處理匯率資料
+        if (rateRes.status === 'fulfilled') {
+            const d = await rateRes.value.json();
+            if (d && d.rates && d.rates.TWD) usdToTwd = d.rates.TWD;
+        }
+
+        // 處理雲端資產資料
+        if (cloudRes.status === 'fulfilled') {
+            const cloudData = await cloudRes.value.json();
+            if (cloudData) {
+                if (cloudData.assets && cloudData.assets.length > 0) {
+                    assets = cloudData.assets;
+                    localStorage.setItem('percento_dark_data', JSON.stringify(assets));
+                }
+                if (!localHidden && cloudData.hiddenCats) {
+                    hiddenCategories = cloudData.hiddenCats;
+                    localStorage.setItem('percento_hidden_cats', JSON.stringify(hiddenCategories));
+                }
+                if (!localSelectedCats && cloudData.selectedCats) {
+                    selectedHistoryCats = cloudData.selectedCats;
+                    localStorage.setItem('percento_selected_cats', JSON.stringify(selectedHistoryCats));
+                }
+            }
+        }
+
+        document.getElementById('status').innerText = "✅ 同步完成";
+        // 雲端資料同步後，再刷新一次最新狀態
+        refresh();
+
+    } catch(e) {
+        console.log("背景同步發生異常:", e);
+        document.getElementById('status').innerText = "⚠️ 使用離線資料";
+    }
 };
 
 // 在 handleNewItem 函數末端加入
@@ -1122,7 +1604,8 @@ function pressKey(num) {
                 if (currentInputPwd === UNHIDE_PASSWORD) {
                     hiddenCategories = hiddenCategories.filter(c => c !== pendingCat);
                     localStorage.setItem('percento_hidden_cats', JSON.stringify(hiddenCategories));
-                    refresh();
+                    saveAndRefresh();
+                    renderHistoryChart(); // 🟢 補上這行：解鎖分類後即時刷新曲線圖
                     closePwdModal();
                 } else {
                     authFailed();

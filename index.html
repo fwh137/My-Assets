@@ -1469,45 +1469,39 @@ window.onload = async () => {
     document.getElementById('status').innerText = "☁️ 正在背景同步...";
 
     try {
-        // 1. 優先確保取得最新匯率，避免資產計算缺匯率算錯
-        try {
-            const rateRes = await fetch('https://open.er-api.com/v6/latest/USD');
+        // 使用 Promise.all 同時請求 GAS 與匯率 API
+        const [cloudRes, rateRes] = await Promise.allSettled([
+            fetch(`${YOUR_SCRIPT_URL}?action=getAllData`),
+            fetch('https://open.er-api.com/v6/latest/USD')
+        ]);
+
+        // 處理匯率資料
+        if (rateRes.status === 'fulfilled') {
             const d = await rateRes.value.json();
             if (d && d.rates && d.rates.TWD) usdToTwd = d.rates.TWD;
-        } catch(e) {
-            console.log("匯率取得失敗，使用預設值");
         }
 
-        // 2. 匯率準備完成後，才請求雲端資產資料
-        const cloudRes = await fetch(`${YOUR_SCRIPT_URL}?action=getAllData`);
-        const cloudData = await cloudRes.json();
-
-        if (cloudData && cloudData.assets && cloudData.assets.length > 0) {
-            const cloudTime = cloudData.lastUpdated || 0;
-            const localTime = parseInt(localStorage.getItem('lastUpdated') || '0', 10);
-            const localDataStr = localStorage.getItem('percento_dark_data');
-
-            // 🔴 只有當雲端時間較新，或本地無紀錄時才蓋掉本地
-            if (!localDataStr || cloudTime >= localTime) {
-                assets = cloudData.assets;
-                localStorage.setItem('percento_dark_data', JSON.stringify(assets));
-                localStorage.setItem('lastUpdated', cloudTime || Date.now());
-                console.log("已順利同步雲端最新資料！");
-            } else {
-                console.log("本地資料較新，保留本地");
-            }
-
-            if (!localHidden && cloudData.hiddenCats) {
-                hiddenCategories = cloudData.hiddenCats;
-                localStorage.setItem('percento_hidden_cats', JSON.stringify(hiddenCategories));
-            }
-            if (!localSelectedCats && cloudData.selectedCats) {
-                selectedHistoryCats = cloudData.selectedCats;
-                localStorage.setItem('percento_selected_cats', JSON.stringify(selectedHistoryCats));
+        // 處理雲端資產資料
+        if (cloudRes.status === 'fulfilled') {
+            const cloudData = await cloudRes.value.json();
+            if (cloudData) {
+                if (cloudData.assets && cloudData.assets.length > 0) {
+                    assets = cloudData.assets;
+                    localStorage.setItem('percento_dark_data', JSON.stringify(assets));
+                }
+                if (!localHidden && cloudData.hiddenCats) {
+                    hiddenCategories = cloudData.hiddenCats;
+                    localStorage.setItem('percento_hidden_cats', JSON.stringify(hiddenCategories));
+                }
+                if (!localSelectedCats && cloudData.selectedCats) {
+                    selectedHistoryCats = cloudData.selectedCats;
+                    localStorage.setItem('percento_selected_cats', JSON.stringify(selectedHistoryCats));
+                }
             }
         }
 
         document.getElementById('status').innerText = "✅ 同步完成";
+        // 雲端資料同步後，再刷新一次最新狀態
         refresh();
 
     } catch(e) {
